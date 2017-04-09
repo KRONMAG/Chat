@@ -1,17 +1,27 @@
 ﻿using System;
 using System.IO;
 using System.Text;
+using System.Collections.Generic;
+using System.Threading;
 
 namespace Chat_Functions
 {
     public class IO
     {
-        public static StreamWriter errors = null;
-
-        public static void ErrorToFile(Exception e)
+        public static string path = null;
+        public static List<Exception> error = new List<Exception>();
+        
+        public static void ErrorControl()
         {
-            if (errors != null)
-                lock (errors) errors.WriteLine("Date: " + DateTime.Now.ToString() + Environment.NewLine + "Point: " + e.TargetSite.ToString() + Environment.NewLine + "Error: " + e.Message + Environment.NewLine);
+            while (true)
+            {
+                if (error.Count != 0)
+                {
+                    if (path != null) File.AppendAllText(path, "Date: " + DateTime.Now.ToString() + Environment.NewLine + "Point: " + error[0].StackTrace.ToString() + Environment.NewLine + "Error: " + error[0].Message + Environment.NewLine);
+                    error.RemoveAt(0);
+                }
+                else Thread.Sleep(0);
+            }
         }
 
         public static string Read(Stream n, int s)
@@ -25,7 +35,7 @@ namespace Chat_Functions
             }
             catch (Exception e)
             {
-                ErrorToFile(e);
+                error.Add(e);
                 return "null";
             }
         }
@@ -41,7 +51,7 @@ namespace Chat_Functions
             }
             catch (Exception e)
             {
-                ErrorToFile(e);
+                error.Add(e);
             }
         }
     }

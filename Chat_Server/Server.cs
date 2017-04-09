@@ -3,7 +3,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Collections.Generic;
-using System.Text;
 using System.IO;
 using System.Diagnostics;
 using Chat_Functions;
@@ -27,8 +26,9 @@ static class Server
     static int port;
     static string path = Environment.CurrentDirectory;
     static List<Thread> work = new List<Thread>();
+    static Thread error = new Thread(IO.ErrorControl);
     static Post[] post = new Post[16];
-
+    
     static bool Check(string s)
     {
         bool res = true;
@@ -92,7 +92,7 @@ static class Server
         }
         catch (Exception error)
         {
-            IO.ErrorToFile(error);
+            IO.error.Add(error);
             l = "";
             return false;
         }
@@ -176,17 +176,16 @@ static class Server
         }
         catch (Exception error)
         {
-            IO.ErrorToFile(error);
+            IO.error.Add(error);
         }
     }
 
     static void Main()
     {
-        bool isappend = true;
         Directory.CreateDirectory(path + @"/users");
         Directory.CreateDirectory(path + @"/messages");
-        if (!File.Exists(path + @"/messages/errors.txt")) isappend = false;
-        Chat_Functions.IO.errors = new StreamWriter(path + @"/messages/errors.txt", isappend, Encoding.Unicode);
+        IO.path = path+@"/messages/errors.txt";
+        error.Start();
         try
         {
             for (int i = 0; i < 16; i++)
@@ -205,7 +204,7 @@ static class Server
                 if (server.Pending())
                 {
                     work.Add(new Thread(Connection));
-                    work[work.Count - 1].Start((object)server.AcceptTcpClient());
+                    work[work.Count - 1].Start(server.AcceptTcpClient());
                     for (int i = 0; i < work.Count; i++)
                         if (!work[i].IsAlive) work.RemoveAt(i);
                     Console.Title = "Connections: " + work.Count.ToString();
@@ -215,10 +214,12 @@ static class Server
         }
         catch (Exception e)
         {
-            IO.ErrorToFile(e);
+            IO.error.Add(e);
         }
         finally
         {
+            while (IO.error.Count != 0) Thread.Sleep(0);
+            error.Abort();
             work.Clear();
             if (server != null) server.Stop();
         }

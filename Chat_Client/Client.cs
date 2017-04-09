@@ -17,8 +17,8 @@ namespace Chat_Client
         static Chat chat = null;
         const string E_ATH = "Unable to login: invalid username or password";
         const string E_REG = "Unable to create an account: invalid username and password";
-        const string E_SRV = "Can not connect to server";
-        const string E_MSG = "The message was not delivered";
+        const string E_SRV = "Can not connect to server or connection was interrupted";
+        const string E_MSG = "Do not send more than one message per second";
         static NetworkStream stream;
 
         static void Error(string e)
@@ -61,70 +61,77 @@ namespace Chat_Client
 
         static void Main()
         {
-            Thread thread = new Thread(Run);
-            auth.FormClosed += Exit;
-            IPAddress address = IPAddress.Parse("192.168.1.3");
-            int port = 49001;
-            thread.Start(auth);
-            client.Connect(address, port);
-            Stopwatch load = new Stopwatch();
-            if (client.Connected)
+            try
             {
+                Thread thread = new Thread(Run);
+                auth.FormClosed += Exit;
+                IPAddress address = IPAddress.Parse("192.168.1.3");
+                int port = 49001;
+                thread.Start(auth);
+                client.Connect(address, port);
+                Stopwatch load = new Stopwatch();
                 stream = client.GetStream();
                 while (!ath)
                 {
-                    if (auth.cmd != null)
+                    if (client.Connected)
                     {
-                        busy = true;
-                        IO.Write(stream, auth.cmd, 3);
-                        IO.Write(stream, auth.data, 256);
-                        if (IO.Read(stream, 1) == "Y")
+                        if (auth.cmd != null)
                         {
-                            auth.FormClosed -= Exit;
-                            ath = true;
-                            Application.Exit();
-                            auth = null;
-                            chat = new Chat();
-                            chat.FormClosed += Exit;
-                            thread = new Thread(Run);
-                            thread.Start(chat);
+                            busy = true;
+                            IO.Write(stream, auth.cmd, 3);
+                            IO.Write(stream, auth.data, 256);
+                            if (IO.Read(stream, 1) == "Y")
+                            {
+                                auth.FormClosed -= Exit;
+                                ath = true;
+                                Application.Exit();
+                                auth = null;
+                                chat = new Chat();
+                                chat.FormClosed += Exit;
+                                thread = new Thread(Run);
+                                thread.Start(chat);
+                            }
+                            else
+                            {
+                                Error(auth.cmd == "ath" ? E_ATH : E_REG);
+                                auth.cmd = null;
+                            }
+                            busy = false;
                         }
-                        else
-                        {
-                            Error(auth.cmd == "ath" ? "Unable to login: invalid username or password" : "Unable to create an account: invalid username and password");
-                            auth.cmd = null;
-                        }
-                        busy = false;
+                        else Thread.Sleep(0);
                     }
-                    else
-                        Thread.Sleep(0);
+                    else throw new SocketException();
                 }
                 load.Start();
                 while (true)
                 {
-                    if (chat.data != null)
+                    if (client.Connected)
                     {
-                        busy = true;
-                        IO.Write(stream, "msg", 3);
-                        if (IO.Read(stream, 1) == "Y")
-                            IO.Write(stream, chat.data, 256);
+                        if (chat.data != null)
+                        {
+                            busy = true;
+                            IO.Write(stream, "msg", 3);
+                            if (IO.Read(stream, 1) == "Y")
+                                IO.Write(stream, chat.data, 256);
+                            else
+                                Error(E_MSG);
+                            chat.data = null;
+                            busy = false;
+                        }
+                        else if (load.Elapsed.Milliseconds >= 500)
+                        {
+                            GetMsg();
+                            load.Restart();
+                        }
                         else
-                            Error("The message was not delivered");
-                        chat.data = null;
-                        busy = false;
+                            Thread.Sleep(0);
                     }
-                    else if (load.Elapsed.Milliseconds >= 500)
-                    {
-                        GetMsg();
-                        load.Restart();
-                    }
-                    else
-                        Thread.Sleep(0);
+                    else throw new SocketException();
                 }
             }
-            else
+            catch (SocketException e)
             {
-                Error("Can not connect to server");
+                Error(E_SRV);
                 Environment.Exit(0);
             }
         }
