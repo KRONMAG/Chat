@@ -5,19 +5,21 @@ using System.Threading;
 using System.Collections.Generic;
 using System.IO;
 using System.Diagnostics;
+using System.Data.OleDb;
 using Chat_Functions;
 
 static class Server
 {
     struct Post
     {
-        public string msg;
+        public string msg, nickname;
         public DateTime date;
 
-        public Post(string text)
+        public Post(DateTime time, string nick, string text)
         {
+            date = time;
+            nickname = nick;
             msg = text;
-            date = DateTime.Now;
         }
     }
 
@@ -28,7 +30,71 @@ static class Server
     static List<Thread> work = new List<Thread>();
     static Thread error = new Thread(IO.ErrorControl);
     static Post[] post = new Post[16];
-    
+    static OleDbConnection db;
+    static OleDbCommand cmd;
+    static bool busy = false;
+
+    static bool IsNull(object o)
+    {
+        return (o == DBNull.Value || o == null);
+    }
+
+    static bool SQLCommand(string c, params object[] d)
+    {
+        while (busy) Thread.Sleep(0);
+        busy = true;
+        object query;
+        bool res = true;
+        if (c=="reg")
+        {
+            cmd.CommandText = "SELECT id FROM Users WHERE login='"+d[0]+"'";
+            if (IsNull(cmd.ExecuteScalar()))
+            {
+                cmd.CommandText = "SELECT MAX(id) FROM Users";
+                query = cmd.ExecuteScalar();
+                int id = !IsNull(query) ? (int)query+1 : 1;
+                cmd.CommandText = "INSERT INTO Users VALUES (" + id + ",'" + d[0] + "','" + d[1] + "')";
+                cmd.ExecuteNonQuery();
+                res = true;
+            }
+            else res = false;
+        }
+        else if (c=="ath")
+        {
+            cmd.CommandText = "SELECT id FROM Users WHERE login='" + d[0] + "' AND password='"+d[1]+"'";
+            if (!IsNull(cmd.ExecuteScalar())) res = true;
+            else res = false;
+        }
+        else if (c=="all" || c=="msg")
+        {
+            cmd.CommandText = "SELECT MAX(id) FROM Posts";
+            query = cmd.ExecuteScalar();
+            int nums = !IsNull(query) ? (int)query : 0;
+            if (c == "all")
+            {
+                int k = 15;
+                cmd.CommandText = "SELECT date, nickname, text FROM Posts WHERE id>=" + nums.ToString() + "-15";
+                OleDbDataReader stream = cmd.ExecuteReader();
+                while (stream.Read())
+                {
+                    post[k] = new Post(DateTime.Parse(stream[0].ToString()), stream[1].ToString(), stream[2].ToString());
+                    k--;
+                }
+                for (int i = k; i >= 0; i--)
+                    post[i] = new Post(DateTime.MinValue, " "," ");
+                Array.Sort<Post>(post, (x, y) => x.date.CompareTo(y.date));
+                stream.Close();
+            }
+            else
+            {
+                cmd.CommandText = "INSERT INTO Posts VALUES (" + (nums + 1).ToString() + ",'" + d[0] + "','" + d[1] + "','" + d[2] + "')";
+                cmd.ExecuteNonQuery();
+            }
+        }
+        busy = false;
+        return res;
+    }
+
     static bool Check(string s)
     {
         bool res = true;
@@ -50,7 +116,7 @@ static class Server
         return res;
     }
 
-    static bool Sign(Stream n, out string l, bool f)
+    static bool Sign(Stream n, out string l, string c)
     {
         try
         {
@@ -61,29 +127,22 @@ static class Server
             if (pos >= 0)
             {
                 for (int i = pos + 1; i < msg.Length; i++)
+                {
                     if (msg[i] == ':')
                     {
                         msg.Remove(i, 1);
                         msg.Insert(i, "a");
                     }
+                }
                 string[] data = msg.Split(':');
                 if (Check(data[0]))
                 {
-                    string file = path + @"/users/" + data[0] + ".usr";
-                    if (File.Exists(file))
+                    if (SQLCommand(c , data[0], data[1]))
                     {
-                        if (f && data[1] == File.ReadAllText(file)) l = data[0];
-                        else res = false;
+                        l = data[0];
+                        res = true;
                     }
-                    else
-                    {
-                        if (!f)
-                        {
-                            File.WriteAllText(file, data[1]);
-                            l = data[0];
-                        }
-                        else res = false;
-                    }
+                    else res = false;
                 }
                 else res = false;
             }
@@ -103,7 +162,7 @@ static class Server
         try
         {
             TcpClient client = (TcpClient)o;
-            string cmd = " ", nickname = "", msg, ip = client.Client.RemoteEndPoint.ToString();
+            string cmd = " ", nickname = "", ip = client.Client.RemoteEndPoint.ToString();
             bool auth = false, first = true;
             NetworkStream stream = client.GetStream();
             Stopwatch time1 = new Stopwatch(), time2 = new Stopwatch();
@@ -120,7 +179,7 @@ static class Server
                     {
                         case "reg":
                         case "ath":
-                            if (Sign(stream, out nickname, cmd == "ath" ? true : false))
+                            if (Sign(stream, out nickname, cmd))
                             {
                                 IO.Write(stream, "Y", 1);
                                 auth = true;
@@ -132,10 +191,11 @@ static class Server
                             if (auth && time2.ElapsedMilliseconds > 1000)
                             {
                                 IO.Write(stream, "Y", 1);
-                                msg = nickname + ": " + IO.Read(stream, 256);
+                                string text = IO.Read(stream, 256);
                                 for (int i = 0; i < 15; i++)
                                     post[i] = post[i + 1];
-                                post[15] = new Post(msg);
+                                post[15] = new Post(DateTime.Now, nickname, text);
+                                SQLCommand("msg", post[15].date.ToString(), nickname, text);
                                 time2.Restart();
                             }
                             else IO.Write(stream, "N", 1);
@@ -157,7 +217,7 @@ static class Server
                                 else first = false;
                                 IO.Write(stream, ((char)n).ToString(), 1);
                                 for (int i = 16 - n; i < 16; i++)
-                                    IO.Write(stream, post[i].msg, 256);
+                                    IO.Write(stream, post[i].nickname + (post[i].nickname != " " ? ':' : ' ') + post[i].msg, 272);
                                 last = post[15].date;
                             }
                             else IO.Write(stream, "N", 1);
@@ -182,17 +242,15 @@ static class Server
 
     static void Main()
     {
-        Directory.CreateDirectory(path + @"/users");
+        db = db = new OleDbConnection(@"Provider=Microsoft.Jet.OLEDB.4.0;Data Source=C:\Users\vovan\OneDrive\Documents\GitHub\Chat\Chat_Server\Chat.mdb");
+        db.Open();
+        cmd = db.CreateCommand();
         Directory.CreateDirectory(path + @"/messages");
         IO.path = path+@"/messages/errors.txt";
         error.Start();
         try
         {
-            for (int i = 0; i < 16; i++)
-            {
-                post[i] = new Post(" ");
-                Thread.Sleep(1);
-            }
+            SQLCommand("all");
             Console.Write("IP: ");
             ip = IPAddress.Parse(Console.ReadLine());
             Console.Write("Port: ");
@@ -212,9 +270,9 @@ static class Server
                 else Thread.Sleep(0);
             }
         }
-        catch (Exception e)
+        catch (Exception error)
         {
-            IO.error.Add(e);
+            IO.error.Add(error);
         }
         finally
         {
@@ -222,6 +280,11 @@ static class Server
             error.Abort();
             work.Clear();
             if (server != null) server.Stop();
+            if (db != null)
+            {
+                db.Close();
+                db.Dispose();
+            }
         }
     }
 }

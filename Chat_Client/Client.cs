@@ -42,7 +42,7 @@ namespace Chat_Client
             {
                 int num = 16 - IO.Read(stream, 1)[0];
                 for (int i = 0; i < 16; i++)
-                    chat.post[i] = i >= num ? IO.Read(stream, 256) : chat.post[i + 1];
+                    chat.post[i] = i >= num ? IO.Read(stream, 272) : chat.post[i + 1];
                 chat.update = true;
             }
             busy = false;
