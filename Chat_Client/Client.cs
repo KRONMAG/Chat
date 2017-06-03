@@ -16,14 +16,16 @@ namespace Chat_Client
         static Authorization auth = new Authorization();
         static Chat chat = null;
         const string E_ATH = "Unable to login: invalid username or password";
-        const string E_REG = "Unable to create an account: invalid username and password";
+        const string E_REG = "Unable to create an account: invalid username and password or username already exists";
         const string E_SRV = "Can not connect to server or connection was interrupted";
         const string E_MSG = "Do not send more than one message per second";
+        static readonly string[] E_BAN = { "You were banned before ", ". Cause: " };
         static NetworkStream stream;
 
-        static void Error(string e)
+        static void Error(string e, bool b = false)
         {
             MessageBox.Show(e, "Error");
+            if (b) throw new SocketException();
         }
 
         static void Run(object o)
@@ -65,7 +67,7 @@ namespace Chat_Client
             {
                 Thread thread = new Thread(Run);
                 auth.FormClosed += Exit;
-                IPAddress address = IPAddress.Parse("192.168.1.3");
+                IPAddress address = IPAddress.Parse("127.0.0.1");
                 int port = 49001;
                 thread.Start(auth);
                 client.Connect(address, port);
@@ -82,14 +84,18 @@ namespace Chat_Client
                             IO.Write(stream, auth.data, 256);
                             if (IO.Read(stream, 1) == "Y")
                             {
-                                auth.FormClosed -= Exit;
                                 ath = true;
-                                Application.Exit();
-                                auth = null;
-                                chat = new Chat();
-                                chat.FormClosed += Exit;
-                                thread = new Thread(Run);
-                                thread.Start(chat);
+                                if (IO.Read(stream, 1) == "N")
+                                {
+                                    auth.FormClosed -= Exit;
+                                    Application.Exit();
+                                    auth = null;
+                                    chat = new Chat();
+                                    chat.FormClosed += Exit;
+                                    thread = new Thread(Run);
+                                    thread.Start(chat);
+                                }
+                                else  Error(E_BAN[0] + IO.Read(stream, 19) + E_BAN[1] + IO.Read(stream, 256), true);
                             }
                             else
                             {
@@ -111,10 +117,15 @@ namespace Chat_Client
                         {
                             busy = true;
                             IO.Write(stream, "msg", 3);
-                            if (IO.Read(stream, 1) == "Y")
-                                IO.Write(stream, chat.data, 256);
-                            else
-                                Error(E_MSG);
+                            switch (IO.Read(stream, 2))
+                            {
+                                case "YN":IO.Write(stream, chat.data, 256);
+                                    break;
+                                case "NN":Error(E_MSG);
+                                    break;
+                                case "YY":Error(E_BAN[0] + IO.Read(stream, 19) + E_BAN[1] + IO.Read(stream, 256), true);
+                                    break;
+                            }
                             chat.data = null;
                             busy = false;
                         }

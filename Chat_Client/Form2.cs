@@ -5,14 +5,19 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using System.Management;
 
 namespace Chat_Client
 {
     public class Authorization : Form
     {
+    	private readonly string[] query={"SELECT Name FROM Win32_Processor",
+    									 "SELECT Caption FROM Win32_VideoController",
+    									 "SELECT Caption FROM Win32_Volume"};
+    		
         public string cmd = null;
-        private IContainer components = null;
         public string data;
+        private IContainer components = null;
         private Button Sign_In;
         private Button Sign_Up;
         private TextBox T_Password;
@@ -25,12 +30,10 @@ namespace Chat_Client
             InitializeComponent();
         }
 
-        private void Send(string c)
+        private string ComputeHash(string t)
         {
-            while (cmd != null)
-                Thread.Sleep(0);
-            string hash = Encoding.Unicode.GetString(new MD5CryptoServiceProvider().ComputeHash(Encoding.Unicode.GetBytes(T_Password.Text))), newhash = "";
-            int num, sym;
+        	string hash=Encoding.Unicode.GetString(new MD5CryptoServiceProvider().ComputeHash(Encoding.Unicode.GetBytes(t))), newhash="";
+        	int num, sym;
             for (int i = 0; i < hash.Length; i++)
             {
                 num = hash[i];
@@ -42,7 +45,23 @@ namespace Chat_Client
                     num /= 256;
                 }
             }
-            data = T_Login.Text + ":" + newhash;
+            return newhash;
+        }
+        
+        private void Send(string c)
+        {
+            while (cmd != null)
+                Thread.Sleep(0);
+            string hash = ComputeHash(T_Password.Text), pchash="";
+            for (int i=0;i<3;i++)
+            {
+            	ManagementObjectCollection pc = new ManagementObjectSearcher("root\\CIMV2", query[i]).Get();
+            	foreach (ManagementObject o in pc)
+            		if (i==0) pchash+=o["Name"];
+            	else pchash+=o["Caption"];
+            }
+            pchash=ComputeHash(pchash);
+            data = T_Login.Text + ':' + hash+':'+pchash;
             cmd = c;
         }
 
