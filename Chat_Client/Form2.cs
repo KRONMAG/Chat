@@ -1,20 +1,25 @@
 ﻿using System;
 using System.ComponentModel;
-using System.Drawing;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using System.Management;
+using System.Net;
+using System.IO;
 
 namespace Chat_Client
 {
-    public class Authorization : Form
+    public class Authorization : System.Windows.Forms.Form
     {
     	private readonly string[] query={"SELECT Name FROM Win32_Processor",
     									 "SELECT Caption FROM Win32_VideoController",
     									 "SELECT Caption FROM Win32_Volume"};
-    		
+        readonly string path = Environment.CurrentDirectory + @"/settings";
+        readonly string options = @"/options.cfg";
+
+        public IPAddress ip = IPAddress.Parse("192.168.0.47");
+        public int port = 49001;
         public string cmd = null;
         public string data;
         private IContainer components = null;
@@ -23,11 +28,28 @@ namespace Chat_Client
         private TextBox T_Password;
         private TextBox T_Login;
         private Label L_Login;
+        private Button B_Options;
         private Label L_Password;
 
         public Authorization()
         {
             InitializeComponent();
+            SetNetData();
+        }
+
+        private void SetNetData(object sender=null, EventArgs e=null)
+        {
+            Directory.CreateDirectory(path);
+            if (File.Exists(path + options))
+            {
+                string[] data = File.ReadAllLines(path + options);
+                if (data.Length == 2)
+                {
+                    ip = IPAddress.Parse(data[0]);
+                    port = int.Parse(data[1]);
+                }
+            }
+            else File.WriteAllText(path + options, ip.ToString() + Environment.NewLine + port.ToString());
         }
 
         private string ComputeHash(string t)
@@ -75,6 +97,13 @@ namespace Chat_Client
             Send("ath");
         }
 
+        private void B_Options_Click(object sender, EventArgs e)
+        {
+            Options opt = new Options(ip, port, path+options);
+            opt.Show();
+            opt.FormClosed += new FormClosedEventHandler(SetNetData);
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing && components != null)
@@ -84,64 +113,107 @@ namespace Chat_Client
 
         private void InitializeComponent()
         {
-            Sign_In = new Button();
-            Sign_Up = new Button();
-            T_Password = new TextBox();
-            T_Login = new TextBox();
-            L_Login = new Label();
-            L_Password = new Label();
-            SuspendLayout();
-            Sign_In.Location = new Point(41, 100);
-            Sign_In.Name = "Sign_In";
-            Sign_In.Size = new Size(75, 25);
-            Sign_In.TabIndex = 0;
-            Sign_In.Text = "Sign In";
-            Sign_In.UseVisualStyleBackColor = true;
-            Sign_In.Click += new EventHandler(Sign_In_Click);
-            Sign_Up.Location = new Point(175, 100);
-            Sign_Up.Name = "Sign_Up";
-            Sign_Up.Size = new Size(75, 25);
-            Sign_Up.TabIndex = 1;
-            Sign_Up.Text = "Sign Up";
-            Sign_Up.UseVisualStyleBackColor = true;
-            Sign_Up.Click += new EventHandler(Sign_Up_Click);
-            T_Password.Location = new Point(100, 54);
-            T_Password.Name = "T_Password";
-            T_Password.Size = new Size(150, 20);
-            T_Password.TabIndex = 2;
-            T_Password.UseSystemPasswordChar = true;
-            T_Login.Location = new Point(100, 16);
-            T_Login.Name = "T_Login";
-            T_Login.Size = new Size(150, 20);
-            T_Login.TabIndex = 3;
-            L_Login.AutoSize = true;
-            L_Login.Location = new Point(38, 19);
-            L_Login.Name = "L_Login";
-            L_Login.Size = new Size(36, 13);
-            L_Login.TabIndex = 4;
-            L_Login.Text = "Login:";
-            L_Password.AutoSize = true;
-            L_Password.Location = new Point(38, 57);
-            L_Password.Name = "L_Password";
-            L_Password.Size = new Size(56, 13);
-            L_Password.TabIndex = 5;
-            L_Password.Text = "Password:";
-            AutoScaleDimensions = new SizeF(6f, 13f);
-            AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(284, 161);
-            Controls.Add(L_Password);
-            Controls.Add(L_Login);
-            Controls.Add(T_Login);
-            Controls.Add(T_Password);
-            Controls.Add(Sign_Up);
-            Controls.Add(Sign_In);
-            FormBorderStyle = FormBorderStyle.FixedToolWindow;
-            MaximizeBox = false;
-            MinimizeBox = false;
-            Name = "Authorization";
-            Text = "Autorization";
-            ResumeLayout(false);
-            PerformLayout();
+            this.Sign_In = new System.Windows.Forms.Button();
+            this.Sign_Up = new System.Windows.Forms.Button();
+            this.T_Password = new System.Windows.Forms.TextBox();
+            this.T_Login = new System.Windows.Forms.TextBox();
+            this.L_Login = new System.Windows.Forms.Label();
+            this.L_Password = new System.Windows.Forms.Label();
+            this.B_Options = new System.Windows.Forms.Button();
+            this.SuspendLayout();
+            // 
+            // Sign_In
+            // 
+            this.Sign_In.Location = new System.Drawing.Point(22, 115);
+            this.Sign_In.Margin = new System.Windows.Forms.Padding(4);
+            this.Sign_In.Name = "Sign_In";
+            this.Sign_In.Size = new System.Drawing.Size(80, 30);
+            this.Sign_In.TabIndex = 0;
+            this.Sign_In.Text = "Sign In";
+            this.Sign_In.UseVisualStyleBackColor = true;
+            this.Sign_In.Click += new System.EventHandler(this.Sign_In_Click);
+            // 
+            // Sign_Up
+            // 
+            this.Sign_Up.Location = new System.Drawing.Point(230, 115);
+            this.Sign_Up.Margin = new System.Windows.Forms.Padding(4);
+            this.Sign_Up.Name = "Sign_Up";
+            this.Sign_Up.Size = new System.Drawing.Size(80, 30);
+            this.Sign_Up.TabIndex = 1;
+            this.Sign_Up.Text = "Sign Up";
+            this.Sign_Up.UseVisualStyleBackColor = true;
+            this.Sign_Up.Click += new System.EventHandler(this.Sign_Up_Click);
+            // 
+            // T_Password
+            // 
+            this.T_Password.Location = new System.Drawing.Point(116, 62);
+            this.T_Password.Margin = new System.Windows.Forms.Padding(4);
+            this.T_Password.Name = "T_Password";
+            this.T_Password.Size = new System.Drawing.Size(175, 21);
+            this.T_Password.TabIndex = 2;
+            this.T_Password.UseSystemPasswordChar = true;
+            // 
+            // T_Login
+            // 
+            this.T_Login.Location = new System.Drawing.Point(116, 19);
+            this.T_Login.Margin = new System.Windows.Forms.Padding(4);
+            this.T_Login.Name = "T_Login";
+            this.T_Login.Size = new System.Drawing.Size(175, 21);
+            this.T_Login.TabIndex = 3;
+            // 
+            // L_Login
+            // 
+            this.L_Login.AutoSize = true;
+            this.L_Login.Location = new System.Drawing.Point(45, 22);
+            this.L_Login.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.L_Login.Name = "L_Login";
+            this.L_Login.Size = new System.Drawing.Size(41, 15);
+            this.L_Login.TabIndex = 4;
+            this.L_Login.Text = "Login:";
+            // 
+            // L_Password
+            // 
+            this.L_Password.AutoSize = true;
+            this.L_Password.Location = new System.Drawing.Point(45, 66);
+            this.L_Password.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.L_Password.Name = "L_Password";
+            this.L_Password.Size = new System.Drawing.Size(64, 15);
+            this.L_Password.TabIndex = 5;
+            this.L_Password.Text = "Password:";
+            // 
+            // B_Options
+            // 
+            this.B_Options.Location = new System.Drawing.Point(129, 153);
+            this.B_Options.Margin = new System.Windows.Forms.Padding(4);
+            this.B_Options.Name = "B_Options";
+            this.B_Options.Size = new System.Drawing.Size(80, 30);
+            this.B_Options.TabIndex = 6;
+            this.B_Options.Text = "Options";
+            this.B_Options.UseVisualStyleBackColor = true;
+            this.B_Options.Click += new System.EventHandler(this.B_Options_Click);
+            // 
+            // Authorization
+            // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.ClientSize = new System.Drawing.Size(332, 186);
+            this.Controls.Add(this.B_Options);
+            this.Controls.Add(this.L_Password);
+            this.Controls.Add(this.L_Login);
+            this.Controls.Add(this.T_Login);
+            this.Controls.Add(this.T_Password);
+            this.Controls.Add(this.Sign_Up);
+            this.Controls.Add(this.Sign_In);
+            this.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
+            this.Margin = new System.Windows.Forms.Padding(4);
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
+            this.Name = "Authorization";
+            this.Text = "Authorization";
+            this.ResumeLayout(false);
+            this.PerformLayout();
+
         }
     }
 }

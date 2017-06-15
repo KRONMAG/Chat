@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Diagnostics;
 using System.Data.OleDb;
-using Chat_Functions;
 
 static class Server
 {
@@ -108,7 +107,6 @@ static class Server
             cmd.CommandText = "SELECT date, reason FROM Ban_list WHERE pchash='" + d[0] + "'";
             stream = cmd.ExecuteReader();
             res = "N";
-            Console.WriteLine(d[0]);
             while (stream.Read())
             {
                 res = DateTime.Compare(DateTime.Parse(stream[0].ToString()), DateTime.Now) > 0 ? stream[0].ToString() + '/' + stream[1].ToString() : "N";
@@ -305,9 +303,11 @@ static class Server
         finally
         {
             client.Close();
-            online.Remove(nickname);
             if (auth)
+            {
+                online.Remove(nickname);
                 Console.WriteLine("{0} ({1}) has left the chat", nickname, ip);
+            }
         }
     }
 

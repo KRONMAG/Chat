@@ -4,13 +4,17 @@ using System.Text;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace Chat_Functions
-{
+//<summary>
+//Система отправки и получения данных из входных и выходных потоков, вывод в файл информации об ошибах, возникших в программе
+//</summary>
     public class IO
     {
         public static string path = null;
         public static List<Exception> error = new List<Exception>();
         
+        //<summary>
+//Система отправки и получения данных из входных и выходных потоков, вывод в файл информации об ошибах, возникших в программе
+//</summary>
         public static void ErrorControl()
         {
             while (true)
@@ -54,5 +58,4 @@ namespace Chat_Functions
                 error.Add(e);
             }
         }
-    }
 }
