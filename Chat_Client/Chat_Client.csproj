@@ -10,7 +10,6 @@
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <RootNamespace>Chat_Client</RootNamespace>
-    <NoWin32Manifest>False</NoWin32Manifest>
     <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
     <NoStdLib>False</NoStdLib>
     <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
@@ -75,6 +74,7 @@
   <PropertyGroup>
     <ManifestCertificateThumbprint>91743C6F853152FF6783E9149EF2D507A0BCF1E8</ManifestCertificateThumbprint>
   </PropertyGroup>
+  <PropertyGroup />
   <ItemGroup>
     <Reference Include="Chat_Functions">
       <HintPath>..\Chat_Functions\Chat_Functions\bin\Debug\Chat_Functions.dll</HintPath>
@@ -104,13 +104,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Authorization.resx" />
     <EmbeddedResource Include="Chat.resx" />
-    <EmbeddedResource Include="Form3.resx">
-      <DependentUpon>Form3.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="app.config" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">

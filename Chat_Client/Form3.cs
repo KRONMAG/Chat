@@ -1,4 +1,8 @@
-﻿using System;
+﻿/**
+ * \file
+ * \brief Реализация окна настроек
+*/
+using System;
 using System.ComponentModel;
 using System.Windows.Forms;
 using System.Net;
@@ -6,18 +10,28 @@ using System.IO;
 
 namespace Chat_Client
 {
+	/**
+	 * \brief Система настройки чата (ввод порта и IP-адреса сервера)
+	 * \author Макеев Владимир
+	 * \date 15.06.2017
+	*/
     public class Options : Form
     {
-        private string path;
-        private Button Accept;
-        private Button Cancel;
-        private Label L_Port;
-        private Label L_IP;
-        private TextBox T_IP;
-        private NumericUpDown N_Port;
-        private IContainer components = null;
+        private string path;//!< Путь к файлу с настройками
+        private Button Accept;//!< Кнопка принятия изменений
+        private Button Cancel;//!< Кнопка отмены изменений
+        private Label L_Port;//!< Метка, указывающая на счетчик для ввода порта
+        private Label L_IP;//!< Метка, указывающая на поле для ввода IP-адреса
+        private TextBox T_IP;//!< Тектовое поле для ввода IP-адреса сервера
+        private NumericUpDown N_Port;//!< Счетчик для указания порта сервера
+        private IContainer components = null;//!< Переменная, содержащая компоненты формы
 
-        public Options(IPAddress ip, int port,string path)
+        /**
+         * \brief Конструктор класса: вызов метода для инициализации компонентов формы, присваивание значений входных параметров членам класса
+         * \param[in] ip, port Текущий IP-адрес и порт сервера
+         * \param[in] path Путь к файлу с настройками
+        */
+        public Options(IPAddress ip, int port, string path)
         {
             InitializeComponent();
             T_IP.Text = ip.ToString();
@@ -25,6 +39,10 @@ namespace Chat_Client
             this.path = path;
         }
 
+        /**
+         * \brief Уничтожение компонентов формы, используемых классом
+         * \param[in] disposing Если указано истина, то освобождает неуправляемые и неуправляемые ресурсы, иначе - только неуправляемые
+        */
         protected override void Dispose(bool disposing)
         {
             if (disposing && components != null)
@@ -32,6 +50,10 @@ namespace Chat_Client
             base.Dispose(disposing);
         }
 
+        /**
+ 		 * \brief Внесение изменений в файл с настройками, закрытие формы, метод вызывается при нажатиии на клавишу "Accept"
+ 		 * \param[in] sender, e Параметры, передаваемые методу при возникновении события
+ 		*/
         private void Accept_Click(object sender, EventArgs e)
         {
             IPAddress test;
@@ -43,6 +65,16 @@ namespace Chat_Client
             else MessageBox.Show("Invalid IP address specified");
         }
 
+        /**
+ 		 * \brief Отмена редактирования настроек чата, метод вызывается при нажатиии на клавишу "Cancel"
+ 		 * \param[in] sender, e Параметры, передаваемые методу при возникновении события
+ 		*/
+        private void Cancel_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+        
+        //! Инициализация компонентов формы
         private void InitializeComponent()
         {
         	this.Accept = new System.Windows.Forms.Button();
@@ -133,11 +165,6 @@ namespace Chat_Client
         	this.ResumeLayout(false);
         	this.PerformLayout();
 
-        }
-
-        private void Cancel_Click(object sender, EventArgs e)
-        {
-            this.Close();
         }
     }
 }

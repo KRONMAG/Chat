@@ -1,4 +1,8 @@
-﻿using System;
+﻿/**
+ * \file
+ * \brief Реализация окна авторизации
+*/
+using System;
 using System.ComponentModel;
 using System.Security.Cryptography;
 using System.Text;
@@ -10,33 +14,43 @@ using System.IO;
 
 namespace Chat_Client
 {
+	/**
+	 * \brief Система регистрации и авторизации пользователя, доступ к форме с опциями
+     * \author Макеев Владимир
+     * \date 15.06.2017
+    */ 
     public class Authorization : System.Windows.Forms.Form
     {
     	private readonly string[] query={"SELECT Name FROM Win32_Processor",
     									 "SELECT Caption FROM Win32_VideoController",
-    									 "SELECT Caption FROM Win32_Volume"};
-        readonly string path = Environment.CurrentDirectory + @"/settings";
-        readonly string options = @"/options.cfg";
+    									 "SELECT Caption FROM Win32_Volume"};//!< Запросы для получения информации о компьютере
+        readonly string path = Environment.CurrentDirectory + @"/settings";//!< Путь к директории с настройками
+        readonly string options = @"/options.cfg";//!< Путь к файлу с опциями
 
-        public IPAddress ip = IPAddress.Parse("192.168.0.47");
-        public int port = 49001;
-        public string cmd = null;
-        public string data;
-        private IContainer components = null;
-        private Button Sign_In;
-        private Button Sign_Up;
-        private TextBox T_Password;
-        private TextBox T_Login;
-        private Label L_Login;
-        private Button B_Options;
-        private Label L_Password;
+        public IPAddress ip = IPAddress.Parse("127.0.0.1");//!< IP-адрес сервера (по умолчанию установлен адрес локального хоста)
+        public int port = 49001;//!< Порт сервера
+        public string cmd = null;//!< Строка с командой регистрации или авторизации пользователя, в случае её отсутствия имеет нулевое значение
+        public string data;//!< Строка, содержащая логин, хэш пароля и данных о компьютере для последующей отправки на сервер
+        private IContainer components = null;//!< Переменная, содержащая компоненты формы
+        private Button Sign_In;//!< Кнопка авторизации пользователя
+        private Button Sign_Up;//!< Кнопка регистрации пользователя
+        private Button B_Options;//!< Кнопка для вызова формы с настройками чата
+        private TextBox T_Login;//!< Текстовое поле для ввода логина
+        private TextBox T_Password;//!< Текстовое поле для ввода пароля
+        private Label L_Login;//!< Метка, указывающая на поле для ввода логина
+        private Label L_Password;//!< Метка, указыващая на поле для ввода пароля
 
+        //!< Конструктор класса: вызов методов инициализации компонентов формы и получения данных о сервере
         public Authorization()
         {
             InitializeComponent();
             SetNetData();
         }
 
+        /**
+         * \brief Чтение информации о сервере (порт, IP-адрес) из текстового файла и занесение данных в соответствующие переменные (в случае отсутствия файла происходит его создание и запись значений по умолчанию)
+ 		 * \param[in] sender, e Параметры, передаваемые методу при возникновении события
+ 		*/
         private void SetNetData(object sender=null, EventArgs e=null)
         {
             Directory.CreateDirectory(path);
@@ -52,6 +66,11 @@ namespace Chat_Client
             else File.WriteAllText(path + options, ip.ToString() + Environment.NewLine + port.ToString());
         }
 
+        /**
+         * \brief Вычисление значения хэш-фукнции переданной строки, его редактирование и представления в текстовой форме
+         * \param[in] t Строка, хэш-значение которой требуется вычислить
+         * \return Cтроку, содержащую преобразованное хэш-значение, вычисленное на основе входного параметра
+        */
         private string ComputeHash(string t)
         {
         	string hash=Encoding.Unicode.GetString(new MD5CryptoServiceProvider().ComputeHash(Encoding.Unicode.GetBytes(t))), newhash="";
@@ -70,6 +89,10 @@ namespace Chat_Client
             return newhash;
         }
         
+        /**
+         * \brief Получение данных о компьютере, конструирование и добавление для отправки на сервер запроса для регистрации (авторизации) пользователя
+         * \param[in] c Строка с командой регистрации или авторизации пользователя
+        */
         private void Send(string c)
         {
             while (cmd != null)
@@ -87,16 +110,28 @@ namespace Chat_Client
             cmd = c;
         }
 
+        /**
+ 		 * \brief Передача команды члену класса Send для регистрации пользователя, метод вызывается при нажатии на клавишу "Sign Up"
+ 		 * \param[in] sender, e Параметры, передаваемые методу при возникновении события
+ 		*/
         private void Sign_Up_Click(object sender, EventArgs e)
         {
             Send("reg");
         }
 
+        /**
+ 		 * \brief Передача команды члену класса Send для авторизации пользователя, метод вызывается при нажатии на клавишу "Sign In"
+ 		 * \param[in] sender, e Параметры, передаваемые методу при возникновении события
+ 		*/
         private void Sign_In_Click(object sender, EventArgs e)
         {
             Send("ath");
         }
 
+        /**
+ 		 * \brief Показ и закрытие формы с настройками, обновления данных о сервере, метод вызывается при нажатиии на клавишу "Options"
+ 		 * \param[in] sender, e Параметры, передаваемые методу при возникновении события
+ 		*/
         private void B_Options_Click(object sender, EventArgs e)
         {
             Options opt = new Options(ip, port, path+options);
@@ -104,6 +139,10 @@ namespace Chat_Client
             opt.FormClosed += new FormClosedEventHandler(SetNetData);
         }
 
+        /**
+         * \brief Уничтожение компонентов формы, используемых классом
+         * \param[in] disposing Если указано истина, то освобождает неуправляемые и неуправляемые ресурсы, иначе - только неуправляемые
+        */
         protected override void Dispose(bool disposing)
         {
             if (disposing && components != null)
@@ -111,6 +150,7 @@ namespace Chat_Client
             base.Dispose(disposing);
         }
 
+        //! Инициализация компонентов формы
         private void InitializeComponent()
         {
             this.Sign_In = new System.Windows.Forms.Button();

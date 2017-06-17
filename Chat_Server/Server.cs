@@ -1,4 +1,8 @@
-﻿using System;
+﻿/**
+ * \file
+ * \brief Реализация серверной стороны чата
+*/
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -7,15 +11,23 @@ using System.IO;
 using System.Diagnostics;
 using System.Data.OleDb;
 
+/**
+ * \brief Система взаимодействия с клиентским приложением и СУБД: для каждого пользователя, зашедшего в чат, создается поток, обращение к базе данных последовательное
+ * \author Макеев Владимир
+ * \date 15.06.2017
+*/
 static class Server
 {
-    static readonly string[] symbols = { ";", "'", "--", "{*", "*}" };
+    static readonly string[] symbols = { ";", "'", "--", "{*", "*}" };//!< Набор символов для удаление их из строки SQL-запроса
 
+    //! Структура, описывающая сообщение чата
     struct Post
     {
-        public string msg, nickname;
-        public DateTime date;
+    	public string nickname;//!< Имя пользователя, отправившего сообщение
+        public string msg;//!< Текст сообщения
+        public DateTime date;//!< Дата отправки сообщения
 
+        //! Конструктор структуры, инициализирующий все её члены значениями соответсвующих параметров, указанных при его вызове
         public Post(DateTime time, string nick, string text)
         {
             date = time;
@@ -24,23 +36,34 @@ static class Server
         }
     }
 
-    static TcpListener server;
-    static IPAddress ip;
-    static int port;
-    static string path = Environment.CurrentDirectory;
-    static List<Thread> work = new List<Thread>();
-    static Thread error = new Thread(IO.ErrorControl);
-    static Post[] post = new Post[16];
-    static OleDbConnection db;
-    static OleDbCommand cmd;
-    static HashSet<string> online = new HashSet<string>();
-    static bool busy = false;
+    static TcpListener server;//!< Сокет, использующийся для обработки подключений клиента к серверу
+    static IPAddress ip;//!< IP-адрес сервера
+    static int port;//!< Порт сервера
+    static string path = Environment.CurrentDirectory;//!< Путь к директории, из которой была запущена программа
+    static List<Thread> work = new List<Thread>();//!< Список потоков для работы с входящими содинениями
+    static Thread error = new Thread(IO.ErrorControl);//!< Поток обработки ошибок
+    static Post[] post = new Post[16];//!< Массив, содержащий последние 16 сообщений, которые были отправлены в чат или загружены из БД
+    static OleDbConnection db;//!< Экземпляр класса для подключения к БД
+    static OleDbCommand cmd;//!< Экземпляр класса для выполнения запросов к БД и получения соответствующих результатов
+    static HashSet<string> online = new HashSet<string>();//!< Множество имен пользователей, находящихся в чате в данный момент
+    static bool busy = false;//!< Переменная для оповещения других потоков, идет ли выполнение запроса к базе данных
 
+    /**
+     * \brief Проверка строки, полученной в ходе выполнения запроса к БД, на содержание null-значения
+     * \param[in] o Строка, содержащая результат запроса
+     * \return true, если ссылка на строку имеет нулевое значение (DBNull.Value или null), иначе - false
+    */
     static bool IsNull(object o)
     {
         return (o == DBNull.Value || o == null);
     }
 
+    /**
+     * \brief Создание и выполнение запроса к БД, обработка полученных результатов
+     * \param[in] c Строка, содержащая команду, определющую тип запроса к БД, например: регистрация и авторизация пользователей, получение и запись сообщений чата, выдача бана
+     * \param[in] d Входные параметры, число которых зависит от вида команды
+     * \return Объект, являющийся преобразованным результатом выполнения запроса
+    */
     static object SQLCommand(string c, params object[] d)
     {
         while (busy)
@@ -118,6 +141,11 @@ static class Server
         return res;
     }
 
+    /**
+     * \brief Проверка на корректность имени пользователя (оно может содержать только строчные и заглавные буквы, десятичные цифры)
+     * \param[in] s Строка, содержащая имя пользователя
+     * \return true, если имя удовлетворяет указанным требованим, иначе - false
+    */
     static bool Check(string s)
     {
         bool res = true;
@@ -141,6 +169,14 @@ static class Server
         return res;
     }
 
+    /**
+     * \brief Регистрация нового пользователя и авторизация существующего
+     * \param[in] n Поток ввода-вывода, являющийся частью соответствующего клиентского сокета
+     * \param[out] l Параметр, в который будет записано имя пользователя
+     * \param[out] h Параметр, в который будет записано значение хэш-функции, аргументом которой служат данные о компьютере (информация о видеокарте, процессоре, жестких дисках)
+     * \param[in] c Строка, сообщающая методу, авторизировать или зарегистрировать пользователя
+     * \return true, если регистрация/авторизация прошла успешно, или false, если пароль и логин введены неверно или некорректно, если пользователь уже существует или ему выдан бан, если возникло исключение
+    */
     static bool Sign(Stream n, out string l, out string h, string c)
     {
         try
@@ -188,6 +224,10 @@ static class Server
         }
     }
 
+    /**
+     * \brief Обмен данными с клиентом, обработка входящих команд (регистрация, отправка сообщений и т.д.), обращение к базе данных, вывод информации о посещении чата
+     * \param[in] o Клиентский сокет, с которым было установлено соединение
+    */
     static void Connection(object o)
     {
         TcpClient client = (TcpClient)o;
@@ -311,6 +351,7 @@ static class Server
         }
     }
 
+    //! Точка входа в программу, создание необходимых директорий и файлов, установка и разрыв соединения с БД, инициализация серверного сокета и принятие запросов на подключение, создание потока обработки ошибок, освобождение памяти
     static void Main()
     {
         Directory.CreateDirectory(path + @"/messages");
@@ -318,7 +359,7 @@ static class Server
         error.Start();
         try
         {
-            db = new OleDbConnection(@"Provider=Microsoft.Jet.OLEDB.4.0;Data Source=C:\Users\Владимир\Documents\Visual Studio 2017\Projects\Chat\Chat_Server\Chat.mdb");
+            db = new OleDbConnection(@"Provider=Microsoft.Jet.OLEDB.4.0;Data Source=C:\Users\ACER\Documents\GitHub\Chat\Chat_Server\Chat.mdb");
             db.Open();
             cmd = db.CreateCommand();
             SQLCommand("all");

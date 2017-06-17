@@ -1,38 +1,63 @@
-﻿using System;
+﻿/**
+ * \file
+ * \brief Реализация клиентской части чата
+*/
+using System;
 using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
 using System.Windows.Forms;
 
+//! Пространство имен чата-клиента, объединяющее четыре класса: класс соединения с сервером и три класса форм: авторизация, сообщения и опции
 namespace Chat_Client
 {
-    class Client
+	/**
+     * \brief Система взаимодействия с серверной стороной чата, состоящая из двух частей: регистрация (авторизация) пользователя и отправка/прием сообщений
+     * \author Макеев Владимир
+     * \date 15.06.2017
+     */
+    static class Client
     {
-        static bool ath = false;
-        static TcpClient client = new TcpClient();
-        static bool busy = false;
-        static Authorization auth = new Authorization();
-        static Chat chat = null;
-        const string E_ATH = "Unable to login: invalid username or password";
-        const string E_REG = "Unable to create an account: invalid username and password or username already exists";
-        const string E_SRV = "Can not connect to server or connection was interrupted";
-        const string E_MSG = "Do not send more than one message per second";
-        static readonly string[] E_BAN = { "You were banned before ", ". Cause: " };
-        static NetworkStream stream;
+        static bool ath = false;//!< Переменная, содержащая значение истины, в случае удачной регистрации (авторизации) пользователя
+        static TcpClient client = new TcpClient();//!< Клиентский сокет, необходимый для установления соединения с сервером
+        static bool busy = false;//!< Переменная, использующаяся для последовательной отправки запросов на сервер, равна истине, если в данный момент данных для отправки нет
+        static Authorization auth = new Authorization();//!< Форма регистрации (авторизации) пользователя
+        static Chat chat = null;//!< Форма, позволяющая отправлять сообщения и отображать полученные с сервера
+        static NetworkStream stream;//!< Поток ввода-вывода данных для клиентского сокета
+        
+        /**
+         * \defgroup ClientErrors Ошибки чат-клиента
+		 * \brief Описание ошибок, возникающих при присоединении к серверу и дальнейшей работой с ним
+		 * \{
+		*/
+        const string E_ATH = "Unable to login: invalid username or password";//!< Неудачная авторизация пользователя - неправильно введен логин или пароль
+        const string E_REG = "Unable to create an account: invalid username or username already exists";//!< Создание аккаунта невозможно - некорректный логин или указанный пользователь уже существует
+        const string E_SRV = "Can not connect to server or connection was interrupted";//!< Соединение с сервером не установлено или потеряно
+        const string E_MSG = "Do not send more than one message per second";//!< Отправка больше одного сообщений в секунду
+        static readonly string[] E_BAN = { "You were banned before ", ". Cause: " };//!< На компьютер, с которого пытаются зарегистрироваться (авторизироваться), наложен временный запрет входа в чат
+        /**
+         * \}
+        */
 
+       /**
+        * \brief Вывод сообщения о возникшей ошибке в диалоговое окно
+        * \param[in] e Строка, содержащая описание ошибки
+       */
         static void Error(string e)
         {
             MessageBox.Show(e, "Error");
         }
 
+        /**
+         * \brief Запуск формы (используется для создания нового потока)
+         * \param[in] o Форма, которую необходимо отобразить
+        */
         static void Run(object o)
         {
-            if (ath)
-                Application.Run((System.Windows.Forms.Form)o);
-            else
                 Application.Run((System.Windows.Forms.Form)o);
         }
 
+        //! Получение последних шестнадцати сообщений с сервера и отображение их на экране
         static void GetMsg()
         {
             busy = true;
@@ -47,6 +72,10 @@ namespace Chat_Client
             busy = false;
         }
 
+        /**
+ 		 * \brief Разрыв соединения с сервером и завершение работы программы, метод вызывается при закрытии формы
+ 		 * \param[in] sender, e Параметры, передаваемые методу при возникновении события
+ 		*/
         static void Exit(object sender, FormClosedEventArgs e)
         {
             if (client.Connected)
@@ -57,7 +86,8 @@ namespace Chat_Client
             }
             Environment.Exit(0);
         }
-
+        
+        //! Точка входа в программу, отображение и закрытие форм, соединение и обмен данными с сервером
         static void Main()
         {
                 Thread thread = new Thread(Run);

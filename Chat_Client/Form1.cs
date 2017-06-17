@@ -1,4 +1,8 @@
-﻿using System;
+﻿/**
+ * \file
+ * \brief Реализация окна чата
+*/
+using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Threading;
@@ -6,19 +10,25 @@ using System.Windows.Forms;
 
 namespace Chat_Client
 {
+	/**
+	 * \brief Система ввода сообщений и отображения в форме полученных
+	 * \author Макеев Владимир
+	 * \date 15.06.2017
+	*/
     public class Chat : System.Windows.Forms.Form
     {
-        public delegate void Work(string t);
+        public delegate void Work(string t);//!< Делегат, используемый для создания метода, обновляющего элемент формы с сообщениями
 
-        public bool update = false;
-        public string data = null;
-        public string[] post = new string[16];
-        private IContainer components = null;
-        public Thread msg;
-        private TextBox Messages;
-        private TextBox T_Message;
-        private Label L_Message;
+        public bool update = false;//!< Переменная, равная истине в случае, если с сервера были получены новые сообщения 
+        public string data = null;//!< Переменная, содеражащая данные для отправки на сервер (команду, пароль, логин и т.д.)
+        public string[] post = new string[16];//!< Последние шестнадцать сообщений, полученных с сервера
+        public Thread msg;//!< Поток для обновления сообщений на экране
+        private IContainer components = null;//!< Переменная, содержащая компоненты формы
+        private TextBox Messages;//!< Текстовое поле для ввода сообщений
+        private TextBox T_Message;//!< Текстовое поле для отображения полученных сообщений
+        private Label L_Message;//!< Метка, указывающая пользователю на поле для ввода сообщений
 
+        //! Конструктор класа: вызов метода для инициализации компонентов формы, создание потока отображения сообщений
         public Chat()
         {
             InitializeComponent();
@@ -26,6 +36,7 @@ namespace Chat_Client
             msg.Start();
         }
 
+        //! Обновление текстового поля с сообщениями
         private void SetText(string t)
         {
             if (Messages.InvokeRequired) Invoke(new Work(SetText), t);
@@ -37,6 +48,7 @@ namespace Chat_Client
             }
         }
 
+        //! Проверка на необходимость загрузки новых сообщений в поле
         private void Check()
         {
             while (true)
@@ -52,6 +64,10 @@ namespace Chat_Client
             }
         }
 
+        /**
+ 		 * \brief Добавление запроса на отправку сообщения, метод вызывается при нажатии на клавишу "Send"
+ 		 * \param[in] sender, e Параметры, передаваемые методу при возникновении события
+ 		*/
         private void T_Message_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Return)
@@ -62,6 +78,10 @@ namespace Chat_Client
             }
         }
 
+        /**
+         * \brief Уничтожение компонентов формы, используемых классом
+         * \param[in] disposing Если указано истина, то освобождает неуправляемые и неуправляемые ресурсы, иначе - только неуправляемые
+         */
         protected override void Dispose(bool disposing)
         {
             if (disposing && components != null)
@@ -69,6 +89,7 @@ namespace Chat_Client
             base.Dispose(disposing);
         }
 
+        //! Инициализация компонентов формы
         private void InitializeComponent()
         {
             this.Messages = new System.Windows.Forms.TextBox();
