@@ -303,7 +303,6 @@ $RECYCLE.BIN/
 *.lnk
 *.dll
 *.csproj
-*.mdb
 *.ldb
 *.tex
 Chat_Docs/latex/Makefile
@@ -314,3 +313,4 @@ Chat_Docs/latex/Makefile
 *.html
 *.css
 *.js
+*.resx
