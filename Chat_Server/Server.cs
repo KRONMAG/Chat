@@ -236,10 +236,12 @@ static class Server
         NetworkStream stream = client.GetStream();
         Stopwatch time1 = new Stopwatch(), time2 = new Stopwatch();
         DateTime last = DateTime.MaxValue;
+        int hash=stream.GetHashCode();
         try
         {
             time2.Start();
             int n;
+            IO.SetKey(stream, true);
             while (cmd != "out")
             {
                 if (client.Available > 0)
@@ -342,6 +344,7 @@ static class Server
         }
         finally
         {
+        	if (IO.list.ContainsKey(hash)) IO.list.Remove(hash);
             client.Close();
             if (auth)
             {

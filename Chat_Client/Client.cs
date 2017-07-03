@@ -103,6 +103,7 @@ namespace Chat_Client
                         busy = true;
                         client.Connect(auth.ip, auth.port);
                             stream = client.GetStream();
+                            IO.SetKey(stream, false);
                             IO.Write(stream, auth.cmd, 3);
                             IO.Write(stream, auth.data, 256);
                         if (IO.Read(stream, 1) == "Y")
